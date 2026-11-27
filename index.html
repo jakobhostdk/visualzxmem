@@ -529,10 +529,17 @@ BUS.on('ula.border', d => {
   state.mem[0x5C8F] = d.color & 7;
   markRead(0x5C8F, 'ULA');
 });
-BUS.on('kbd.press', () => {
-  // FRAMES is at $5C78 — ping it like a real BASIC tick would
+BUS.on('kbd.press', d => {
+  // FRAMES at $5C78 ticks like the ROM 50Hz keyboard poll
   markRead(0x5C78, 'CPU');
   state.mem[0x5C78] = (state.mem[0x5C78] + 1) & 0xFF;
+  // LAST_K at $5C08 — store the ASCII of the last key, closest ROM-like analog
+  if (d && typeof d.key === 'string'){
+    const k = d.key;
+    const ch = k.length === 1 ? k.charCodeAt(0) : (k === 'ENT' ? 0x0D : k === 'SPC' ? 0x20 : 0);
+    state.mem[0x5C08] = ch;
+    markRead(0x5C08, 'CPU');
+  }
 });
 BUS.on('cpu.step', d => {
   // if a Z80 iframe is live, mirror its PC into our pointer
@@ -541,6 +548,13 @@ BUS.on('cpu.step', d => {
     state.cpuReads++;
     markRead(state.pc, 'CPU');
   }
+});
+BUS.on('mem.write', d => {
+  // Z80 wrote a byte — reflect it in our memory map and flash the address
+  if (typeof d.addr !== 'number' || typeof d.byte !== 'number') return;
+  const a = d.addr & 0xFFFF;
+  state.mem[a] = d.byte & 0xFF;
+  markRead(a, 'CPU');
 });
 </script>
 </body>
