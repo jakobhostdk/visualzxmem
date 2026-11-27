@@ -307,44 +307,32 @@
 const $ = (s, r=document) => r.querySelector(s);
 const hex = (n, w) => (n>>>0).toString(16).toUpperCase().padStart(w,'0');
 
-/* ─── BUS: dual-path hub bridged through visualzx.traeck.it ─── */
+/* ─── BUS: hub is the visualzx deck (parent in iframe, opener if popped) ─── */
 const BUS = makeBus('mem', 'memory · 64 KB map');
 function makeBus(ID, roleDesc){
   const listeners = new Map();
-  const inIframe = window.parent !== window;
-  let bus = null, ready = false; const queue = [];
-  if (!inIframe){
-    bus = document.createElement('iframe');
-    bus.src = 'https://visualzx.traeck.it/bus.html';
-    bus.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:0;opacity:0;pointer-events:none';
-    bus.setAttribute('aria-hidden','true'); bus.title = 'visualzx bus relay';
-    document.documentElement.appendChild(bus);
-    bus.addEventListener('load', () => {
-      ready = true;
-      for (const m of queue){ try { bus.contentWindow.postMessage(m, '*'); } catch(_){} }
-      queue.length = 0;
-    });
+  function hub(){
+    if (window.parent !== window) return window.parent;
+    if (window.opener && window.opener !== window){
+      try { return window.opener; } catch(_){}
+    }
+    return null;
   }
   function send(t, data){
     const m = { t, data, from:ID };
-    if (inIframe){
-      try { window.parent.postMessage(m, '*'); } catch(_){}
-    } else if (ready && bus && bus.contentWindow){
-      try { bus.contentWindow.postMessage(m, '*'); } catch(_){}
-    } else {
-      queue.push(m);
-    }
+    const w = hub();
+    if (w){ try { w.postMessage(m, '*'); } catch(_){} }
   }
   function on(t, cb){ listeners.set(t, cb); }
   window.addEventListener('message', e => {
+    const w = hub();
+    if (!w || e.source !== w) return;
     const m = e.data;
     if (!m || typeof m !== 'object' || !m.t || m.from === ID) return;
-    if (inIframe){ if (e.source !== window.parent) return; }
-    else { if (!bus || e.source !== bus.contentWindow) return; }
     const cb = listeners.get(m.t);
     if (cb) cb(m.data, m);
   });
-  setTimeout(() => send('hello', { role: roleDesc, inIframe }), inIframe ? 0 : 200);
+  send('hello', { role: roleDesc });
   return { send, on };
 }
 
