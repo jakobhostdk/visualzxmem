@@ -307,27 +307,39 @@
 const $ = (s, r=document) => r.querySelector(s);
 const hex = (n, w) => (n>>>0).toString(16).toUpperCase().padStart(w,'0');
 
-/* ─── BUS ─── */
-const BUS = (() => {
-  const ID = 'mem';
+/* ─── BUS: shared-origin relay via visualzx.traeck.it/bus.html ─── */
+const BUS = makeBus('mem', 'memory · 64 KB map');
+function makeBus(ID, roleDesc){
+  const BUS_URL = 'https://visualzx.traeck.it/bus.html';
   const listeners = new Map();
+  const bus = document.createElement('iframe');
+  bus.src = BUS_URL;
+  bus.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:0;opacity:0;pointer-events:none';
+  bus.setAttribute('aria-hidden','true'); bus.title = 'visualzx bus relay';
+  document.documentElement.appendChild(bus);
+  let ready = false; const queue = [];
+  bus.addEventListener('load', () => {
+    ready = true;
+    for (const m of queue){ try { bus.contentWindow.postMessage(m, '*'); } catch(_){} }
+    queue.length = 0;
+  });
   function send(t, data){
     const m = { t, data, from:ID };
-    try { window.parent.postMessage(m, '*'); } catch(_){}
-    if (window.opener && window.opener !== window){
-      try { window.opener.postMessage(m, '*'); } catch(_){}
-    }
+    if (ready && bus.contentWindow){
+      try { bus.contentWindow.postMessage(m, '*'); } catch(_){}
+    } else queue.push(m);
   }
   function on(t, cb){ listeners.set(t, cb); }
   window.addEventListener('message', e => {
+    if (e.source !== bus.contentWindow) return;
     const m = e.data;
     if (!m || typeof m !== 'object' || !m.t || m.from === ID) return;
     const cb = listeners.get(m.t);
     if (cb) cb(m.data, m);
   });
-  send('hello', { role:'memory · 64 KB map' });
+  setTimeout(() => send('hello', { role: roleDesc }), 200);
   return { send, on };
-})();
+}
 
 /* ─── Spectrum 48K memory map ─── */
 const ZONES = [
