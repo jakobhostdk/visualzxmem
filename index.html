@@ -312,7 +312,11 @@ const BUS = (() => {
   const ID = 'mem';
   const listeners = new Map();
   function send(t, data){
-    try { window.parent.postMessage({ t, data, from:ID }, '*'); } catch(_){}
+    const m = { t, data, from:ID };
+    try { window.parent.postMessage(m, '*'); } catch(_){}
+    if (window.opener && window.opener !== window){
+      try { window.opener.postMessage(m, '*'); } catch(_){}
+    }
   }
   function on(t, cb){ listeners.set(t, cb); }
   window.addEventListener('message', e => {
