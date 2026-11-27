@@ -307,6 +307,24 @@
 const $ = (s, r=document) => r.querySelector(s);
 const hex = (n, w) => (n>>>0).toString(16).toUpperCase().padStart(w,'0');
 
+/* ─── BUS ─── */
+const BUS = (() => {
+  const ID = 'mem';
+  const listeners = new Map();
+  function send(t, data){
+    try { window.parent.postMessage({ t, data, from:ID }, '*'); } catch(_){}
+  }
+  function on(t, cb){ listeners.set(t, cb); }
+  window.addEventListener('message', e => {
+    const m = e.data;
+    if (!m || typeof m !== 'object' || !m.t || m.from === ID) return;
+    const cb = listeners.get(m.t);
+    if (cb) cb(m.data, m);
+  });
+  send('hello', { role:'memory · 64 KB map' });
+  return { send, on };
+})();
+
 /* ─── Spectrum 48K memory map ─── */
 const ZONES = [
   { start:0x0000, end:0x3FFF, name:'ROM · SINCLAIR BASIC',    cls:'z-rom'    },
@@ -503,6 +521,26 @@ zonesEl.addEventListener('click', e => {
   const a = parseInt(txt.slice(1), 16);
   state.pc = a;
   updateUI();
+});
+
+/* ─── bus listeners — react to sibling events ─── */
+BUS.on('ula.border', d => {
+  // BORDCR is at $5C8F — flash it and store the colour
+  state.mem[0x5C8F] = d.color & 7;
+  markRead(0x5C8F, 'ULA');
+});
+BUS.on('kbd.press', () => {
+  // FRAMES is at $5C78 — ping it like a real BASIC tick would
+  markRead(0x5C78, 'CPU');
+  state.mem[0x5C78] = (state.mem[0x5C78] + 1) & 0xFF;
+});
+BUS.on('cpu.step', d => {
+  // if a Z80 iframe is live, mirror its PC into our pointer
+  if (typeof d.pc === 'number'){
+    state.pc = d.pc & 0xFFFF;
+    state.cpuReads++;
+    markRead(state.pc, 'CPU');
+  }
 });
 </script>
 </body>
