@@ -325,8 +325,8 @@ function makeBus(ID, roleDesc){
       let m = null;
       try { m = JSON.parse(typeof e.data === 'string' ? e.data : ''); } catch(_){ return; }
       if (!m || typeof m !== 'object' || !m.t || m.from === ID) return;
-      const cb = listeners.get(m.t);
-      if (cb) cb(m.data, m);
+      const cbs = listeners.get(m.t);
+      if (cbs) for (const cb of cbs) { try { cb(m.data, m); } catch (err) { console.error('bus handler', m.t, err); } }
     });
     ws.addEventListener('close', schedule);
     ws.addEventListener('error', () => { try { ws.close(); } catch(_){} });
@@ -341,7 +341,11 @@ function makeBus(ID, roleDesc){
     if (ws && ws.readyState === 1){ try { ws.send(m); } catch(_){ queue.push(m); } }
     else queue.push(m);
   }
-  function on(t, cb){ listeners.set(t, cb); }
+  function on(t, cb){
+    let a = listeners.get(t);
+    if (!a){ a = []; listeners.set(t, a); }
+    a.push(cb);
+  }
   connect();
   return { send, on };
 }
