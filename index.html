@@ -307,32 +307,42 @@
 const $ = (s, r=document) => r.querySelector(s);
 const hex = (n, w) => (n>>>0).toString(16).toUpperCase().padStart(w,'0');
 
-/* ─── BUS: hub is the visualzx deck (parent in iframe, opener if popped) ─── */
+/* ─── BUS: WebSocket to visualbus.traeck.it ─── */
 const BUS = makeBus('mem', 'memory · 64 KB map');
 function makeBus(ID, roleDesc){
+  const WS_URL = 'wss://visualbus.traeck.it/';
   const listeners = new Map();
-  function hub(){
-    if (window.parent !== window) return window.parent;
-    if (window.opener && window.opener !== window){
-      try { return window.opener; } catch(_){}
-    }
-    return null;
+  let ws = null, backoff = 500, queue = [];
+  function connect(){
+    try { ws = new WebSocket(WS_URL); } catch (_){ schedule(); return; }
+    ws.addEventListener('open', () => {
+      backoff = 500;
+      send('hello', { role: roleDesc });
+      for (const m of queue){ try { ws.send(m); } catch(_){} }
+      queue.length = 0;
+    });
+    ws.addEventListener('message', e => {
+      let m = null;
+      try { m = JSON.parse(typeof e.data === 'string' ? e.data : ''); } catch(_){ return; }
+      if (!m || typeof m !== 'object' || !m.t || m.from === ID) return;
+      const cb = listeners.get(m.t);
+      if (cb) cb(m.data, m);
+    });
+    ws.addEventListener('close', schedule);
+    ws.addEventListener('error', () => { try { ws.close(); } catch(_){} });
+  }
+  function schedule(){
+    ws = null;
+    setTimeout(connect, backoff);
+    backoff = Math.min(backoff * 2, 15000);
   }
   function send(t, data){
-    const m = { t, data, from:ID };
-    const w = hub();
-    if (w){ try { w.postMessage(m, '*'); } catch(_){} }
+    const m = JSON.stringify({ t, data, from:ID });
+    if (ws && ws.readyState === 1){ try { ws.send(m); } catch(_){ queue.push(m); } }
+    else queue.push(m);
   }
   function on(t, cb){ listeners.set(t, cb); }
-  window.addEventListener('message', e => {
-    const w = hub();
-    if (!w || e.source !== w) return;
-    const m = e.data;
-    if (!m || typeof m !== 'object' || !m.t || m.from === ID) return;
-    const cb = listeners.get(m.t);
-    if (cb) cb(m.data, m);
-  });
-  send('hello', { role: roleDesc });
+  connect();
   return { send, on };
 }
 
