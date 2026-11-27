@@ -310,11 +310,12 @@ const hex = (n, w) => (n>>>0).toString(16).toUpperCase().padStart(w,'0');
 /* ─── BUS: WebSocket to visualbus.traeck.it ─── */
 const BUS = makeBus('mem', 'memory · 64 KB map');
 function makeBus(ID, roleDesc){
-  const WS_URL = 'wss://visualbus.traeck.it/';
+  const _bus_room = (() => { try { const u = new URL(location.href); let r = u.searchParams.get('room'); if (!r){ r = sessionStorage.getItem('vbus.room') || (self.crypto && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)); sessionStorage.setItem('vbus.room', r); } return r; } catch(_){ return 'solo'; } })();
+  const WS_URL = 'wss://visualbus.traeck.it/?room=' + encodeURIComponent(_bus_room);
   const listeners = new Map();
   let ws = null, backoff = 500, queue = [];
   function connect(){
-    try { ws = new WebSocket(WS_URL); } catch (_){ schedule(); return; }
+    try { ws = new WebSocket(WS_URL); ws.binaryType = 'arraybuffer'; } catch (_){ schedule(); return; }
     ws.addEventListener('open', () => {
       backoff = 500;
       send('hello', { role: roleDesc });
@@ -323,7 +324,7 @@ function makeBus(ID, roleDesc){
     });
     ws.addEventListener('message', e => {
       let m = null;
-      try { m = JSON.parse(typeof e.data === 'string' ? e.data : ''); } catch(_){ return; }
+      try { m = JSON.parse(typeof e.data === 'string' ? e.data : (e.data instanceof ArrayBuffer ? new TextDecoder().decode(e.data) : '')); } catch(_){ return; }
       if (!m || typeof m !== 'object' || !m.t || m.from === ID) return;
       const cbs = listeners.get(m.t);
       if (cbs) for (const cb of cbs) { try { cb(m.data, m); } catch (err) { console.error('bus handler', m.t, err); } }
