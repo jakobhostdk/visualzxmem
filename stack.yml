@@ -1,0 +1,35 @@
+# Deployed by .github/workflows/deploy.yml to the Hetzner swarm.
+#
+# Traefik on this swarm: entrypoint websecure (:443), cert resolver "cloudflare"
+# (DNS-01), external overlay network traefik-public. Router priority MUST be
+# 100000 to outrank boligtracker_web's greedy *.traeck.it HostRegexp.
+version: "3.9"
+
+services:
+  web:
+    image: ${VISUALZXMEM_IMAGE:-ghcr.io/jakobhostdk/visualzxmem:latest}
+    networks:
+      - traefik-public
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        order: start-first
+        failure_action: rollback
+      restart_policy:
+        condition: any
+        delay: 5s
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=traefik-public"
+        - "traefik.http.routers.visualzxmem.rule=Host(`visualzxmem.traeck.it`)"
+        - "traefik.http.routers.visualzxmem.priority=100000"
+        - "traefik.http.routers.visualzxmem.entrypoints=websecure"
+        - "traefik.http.routers.visualzxmem.tls=true"
+        - "traefik.http.routers.visualzxmem.tls.certresolver=cloudflare"
+        - "traefik.http.services.visualzxmem.loadbalancer.server.port=80"
+        - "traefik.http.services.visualzxmem.loadbalancer.passhostheader=true"
+
+networks:
+  traefik-public:
+    external: true

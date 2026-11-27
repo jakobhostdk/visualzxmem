@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VISUAL ZX MEM — PHOSPHOR LAB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Major+Mono+Display&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#07100b; --bg-2:#0b1a12; --panel:#0d1a13; --panel-2:#112418;
+    --grid:rgba(60,180,120,.08);
+    --amber:#ffb000; --amber-dim:#a07000;
+    --phos:#4df28a; --phos-dim:#1f6b3a; --phos-hot:#c9ffde;
+    --cyan:#6ad2ff; --red:#ff4a4a; --magenta:#ff7adb;
+    --ink:#d9ffe6; --ink-dim:#6fa184;
+    --rule:#214a32; --scan:rgba(77,242,138,.035);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;
+    background:radial-gradient(1200px 800px at 20% -10%, #0e2419 0%, var(--bg) 60%) fixed, var(--bg);
+    color:var(--ink); font-family:'Share Tech Mono', ui-monospace, monospace;
+    font-size:13px; letter-spacing:.02em; overflow:hidden; user-select:none}
+  body::before{content:""; position:fixed; inset:0; pointer-events:none; z-index:60;
+    background:repeating-linear-gradient(0deg, transparent 0 2px, var(--scan) 2px 3px),
+      radial-gradient(1200px 800px at 50% 50%, transparent 55%, rgba(0,0,0,.55) 100%);
+    mix-blend-mode:screen}
+
+  .app{display:grid; grid-template-rows:46px 1fr 28px; height:100%}
+  header.top{display:flex; align-items:center; gap:24px; padding:0 18px;
+    border-bottom:1px solid var(--rule);
+    background:linear-gradient(180deg, #0b1a13 0%, #091510 100%);
+    position:relative; z-index:2}
+  header.top::after{content:""; position:absolute; left:0; right:0; bottom:-1px; height:1px;
+    background:linear-gradient(90deg, transparent, var(--phos) 50%, transparent); opacity:.6}
+  .brand{font-family:'Major Mono Display', monospace;
+    color:var(--phos); text-shadow:0 0 12px rgba(77,242,138,.55);
+    font-size:18px; letter-spacing:.18em}
+  .brand .dot{color:var(--amber); text-shadow:0 0 10px rgba(255,176,0,.6)}
+  .meter{display:flex; align-items:baseline; gap:8px; color:var(--ink-dim);
+    font-size:11px; text-transform:uppercase; letter-spacing:.2em}
+  .meter b{font-family:'VT323', monospace; color:var(--amber);
+    font-size:20px; letter-spacing:.05em; text-shadow:0 0 8px rgba(255,176,0,.5);
+    min-width:4ch; text-align:right}
+  .meter.phos b{color:var(--phos); text-shadow:0 0 8px rgba(77,242,138,.6)}
+  .status-dot{width:8px; height:8px; border-radius:50%;
+    background:var(--phos); box-shadow:0 0 10px var(--phos);
+    animation:breathe 1.6s ease-in-out infinite}
+  @keyframes breathe{50%{opacity:.4}}
+  .spacer{flex:1}
+  .legend{font-size:10px; letter-spacing:.3em; color:var(--ink-dim); text-transform:uppercase}
+
+  main{display:grid; grid-template-columns:360px 1fr 360px; gap:1px;
+    background:var(--rule); min-height:0}
+  main > section{background:var(--panel); display:flex; flex-direction:column; min-height:0; position:relative}
+  .panel-head{display:flex; align-items:center; gap:10px; padding:10px 14px;
+    border-bottom:1px solid var(--rule);
+    background:linear-gradient(180deg, #0d1a13 0%, #0a1510 100%);
+    text-transform:uppercase; letter-spacing:.3em; font-size:10px; color:var(--phos)}
+  .panel-head .tag{font-family:'VT323', monospace;
+    background:var(--phos); color:#001609;
+    padding:1px 6px; letter-spacing:.1em; font-size:13px; text-shadow:none}
+  .panel-head .ghost{color:var(--ink-dim); letter-spacing:.2em; margin-left:auto}
+
+  /* LEFT · reference */
+  .left{overflow:auto}
+  .doc{padding:14px 16px; line-height:1.55}
+  .doc h3{font-family:'Major Mono Display', monospace; color:var(--phos);
+    font-size:11px; letter-spacing:.3em; margin:14px 0 8px;
+    text-shadow:0 0 8px rgba(77,242,138,.4)}
+  .doc h3:first-child{margin-top:0}
+  .doc p{color:var(--ink-dim); margin:6px 0; font-size:12px}
+  .doc .k{color:var(--amber); font-family:'VT323'; font-size:15px; letter-spacing:.05em}
+  .doc .m{color:var(--phos); font-family:'VT323'; font-size:15px}
+  .doc .c{color:var(--cyan); font-family:'VT323'; font-size:15px}
+  .doc .kv{display:grid; grid-template-columns:90px 1fr; gap:4px 10px; margin:4px 0}
+  .doc .kv > span:nth-child(odd){color:var(--phos-dim); font-size:10px;
+    letter-spacing:.3em; text-transform:uppercase; align-self:center}
+  .doc .kv > span:nth-child(even){color:var(--ink); font-family:'VT323'; font-size:14px}
+
+  /* CENTER · ribbon */
+  .center{display:flex; flex-direction:column}
+  .ribbon{flex:1; position:relative; overflow:hidden;
+    background:radial-gradient(ellipse 80% 60% at 50% 48%, #0f2318 0%, #07100b 70%), var(--panel);
+    padding:16px 20px}
+  .ribbon::before{content:""; position:absolute; inset:0;
+    background-image:linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size:28px 28px;
+    mask-image:radial-gradient(ellipse 70% 60% at 50% 50%, black 40%, transparent 85%);
+    -webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 50%, black 40%, transparent 85%);
+    opacity:.6; pointer-events:none}
+  .ribbon-inner{position:relative; height:100%; display:grid;
+    grid-template-columns:84px 1fr; gap:12px}
+  .ticks{position:relative; color:var(--phos-dim); font-family:'VT323'; font-size:14px;
+    text-align:right; padding-right:6px}
+  .tick{position:absolute; right:6px; letter-spacing:.05em;
+    transform:translateY(-50%)}
+  .zones{position:relative; border:1px solid var(--rule); background:#061009;
+    overflow:hidden}
+  .zones .zone{position:absolute; left:0; right:0;
+    border-top:1px solid var(--rule);
+    display:flex; align-items:center; padding:0 12px;
+    font-size:11px; letter-spacing:.25em; text-transform:uppercase;
+    transition:background .2s}
+  .zones .zone:first-child{border-top:0}
+  .zones .zone .lbl{color:var(--ink); font-family:'Share Tech Mono';
+    text-shadow:0 0 4px rgba(0,0,0,.6)}
+  .zones .zone .size{color:var(--ink-dim); margin-left:auto;
+    font-family:'VT323'; font-size:14px; letter-spacing:.1em}
+  .zones .zone .adr{color:var(--phos-dim); font-family:'VT323'; font-size:13px;
+    margin-right:10px; letter-spacing:.05em}
+  .zones .zone:hover{outline:1px solid var(--phos); z-index:3}
+  .zones .pc, .zones .sp{
+    position:absolute; left:-8px; right:-8px; height:2px;
+    pointer-events:none; z-index:4}
+  .zones .pc{background:var(--amber); box-shadow:0 0 10px var(--amber);}
+  .zones .sp{background:var(--cyan); box-shadow:0 0 10px var(--cyan)}
+  .zones .pc::after{content:"PC"; position:absolute; right:-28px; top:-7px;
+    color:var(--amber); font-family:'VT323'; font-size:14px; letter-spacing:.05em}
+  .zones .sp::after{content:"SP"; position:absolute; right:-28px; top:-7px;
+    color:var(--cyan); font-family:'VT323'; font-size:14px; letter-spacing:.05em}
+  .zones .read-flash{position:absolute; left:0; right:0; height:3px;
+    background:var(--phos); opacity:0; pointer-events:none;
+    box-shadow:0 0 8px var(--phos)}
+  .zones .read-flash.on{animation:flash .5s linear forwards}
+  @keyframes flash{from{opacity:.9} to{opacity:0}}
+
+  /* zone tints */
+  .z-rom      {background:linear-gradient(90deg, rgba(0,34,199,.25), rgba(0,34,199,.08))}
+  .z-screen   {background:linear-gradient(90deg, rgba(214,40,22,.28), rgba(214,40,22,.06))}
+  .z-attr     {background:linear-gradient(90deg, rgba(212,51,199,.28), rgba(212,51,199,.06))}
+  .z-print    {background:linear-gradient(90deg, rgba(0,199,201,.22), rgba(0,199,201,.05))}
+  .z-sysvar   {background:linear-gradient(90deg, rgba(204,200,42,.22), rgba(204,200,42,.05))}
+  .z-basic    {background:linear-gradient(90deg, rgba(0,197,37,.22), rgba(0,197,37,.05))}
+  .z-free     {background:linear-gradient(90deg, rgba(60,180,120,.08), transparent)}
+  .z-stack    {background:linear-gradient(90deg, rgba(106,210,255,.25), rgba(106,210,255,.08))}
+
+  /* contention band (left side) */
+  .contend{position:absolute; left:0; width:12px; top:0; bottom:0;
+    background:repeating-linear-gradient(0deg, #ffb000 0 4px, transparent 4px 10px);
+    opacity:.0; transition:opacity .15s}
+  .contend.on{opacity:.9}
+  .contend::after{content:"CONTENDED"; position:absolute; left:-80px; top:50%;
+    writing-mode:vertical-rl; transform:translateY(-50%);
+    color:var(--amber); font-size:9px; letter-spacing:.3em; text-transform:uppercase}
+
+  /* RIGHT · state */
+  .right{overflow:auto}
+  .cards{padding:12px; display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  .card{position:relative; background:#081510; border:1px solid var(--rule); padding:6px 8px 8px}
+  .card .lbl{font-size:9px; letter-spacing:.3em; text-transform:uppercase; color:var(--ink-dim)}
+  .card .val{font-family:'VT323'; font-size:20px; color:var(--phos);
+    text-shadow:0 0 10px rgba(77,242,138,.5); letter-spacing:.05em}
+  .card.amb .val{color:var(--amber); text-shadow:0 0 8px rgba(255,176,0,.5)}
+  .card.cya .val{color:var(--cyan); text-shadow:0 0 8px rgba(106,210,255,.45)}
+
+  .hex{margin:12px; border:1px solid var(--rule); background:#061009}
+  .hex .hdr{display:flex; justify-content:space-between; padding:6px 10px;
+    background:var(--panel-2); border-bottom:1px solid var(--rule);
+    font-size:9px; letter-spacing:.3em; text-transform:uppercase; color:var(--ink-dim)}
+  .hex .hdr b{color:var(--phos); font-family:'VT323'; font-size:14px; letter-spacing:.05em}
+  .hex .rows{font-family:'VT323'; font-size:14px; line-height:1.35; padding:6px 0 10px}
+  .hex .row{display:grid; grid-template-columns:70px repeat(8,1fr) 80px;
+    padding:0 10px; align-items:center}
+  .hex .row .adr{color:var(--amber); letter-spacing:.05em}
+  .hex .row .b{color:var(--ink); text-align:center}
+  .hex .row .b.hit{color:#001609; background:var(--phos); text-shadow:none;
+    box-shadow:0 0 6px var(--phos)}
+  .hex .row .ascii{color:var(--ink-dim); text-align:right; font-size:12px}
+
+  .legend-box{margin:12px; border:1px solid var(--rule); background:#081510; padding:10px}
+  .legend-box .hdr{font-size:9px; letter-spacing:.3em; text-transform:uppercase;
+    color:var(--ink-dim); margin-bottom:6px}
+  .legend-grid{display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; font-size:10px}
+  .legend-grid .chip{display:flex; align-items:center; gap:6px}
+  .legend-grid .chip .sw{width:12px; height:12px; border:1px solid var(--rule)}
+  .legend-grid .chip span{color:var(--ink); letter-spacing:.1em; text-transform:uppercase}
+
+  footer{display:flex; align-items:center; gap:18px; padding:0 18px;
+    border-top:1px solid var(--rule); background:#060e09;
+    font-size:10px; letter-spacing:.25em; text-transform:uppercase; color:var(--ink-dim)}
+  footer b{color:var(--phos); font-family:'VT323'; font-size:14px; letter-spacing:.05em}
+
+  ::-webkit-scrollbar{width:8px; height:8px}
+  ::-webkit-scrollbar-track{background:#06100a}
+  ::-webkit-scrollbar-thumb{background:#1e3a28}
+  ::-webkit-scrollbar-thumb:hover{background:#2c5c3d}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">VISUAL<span class="dot"> · </span>ZX MEM</div>
+    <div class="meter"><span class="status-dot"></span><span id="statusText">PREVIEW</span></div>
+    <div class="meter">PC <b id="pcLabel">1000</b></div>
+    <div class="meter">SP <b id="spLabel">FFFC</b></div>
+    <div class="meter phos">cycles <b id="cycLabel">0</b></div>
+    <div class="spacer"></div>
+    <div class="legend">◉ ZX Spectrum 48K · 64 KB flat · $0000 → $FFFF</div>
+  </header>
+
+  <main>
+    <section class="left">
+      <div class="panel-head">
+        <span class="tag">01</span>
+        <span>REFERENCE · MEMORY</span>
+        <span class="ghost">16K ROM · 48K RAM</span>
+      </div>
+      <div class="doc">
+        <h3>LAYOUT</h3>
+        <div class="kv">
+          <span>$0000</span><span>16 KB ROM · Sinclair BASIC</span>
+          <span>$4000</span><span>6144 B · <span class="m">display file</span></span>
+          <span>$5800</span><span>768 B · <span class="m">attribute file</span></span>
+          <span>$5B00</span><span>256 B · printer buffer</span>
+          <span>$5C00</span><span>system variables (182 B)</span>
+          <span>$5CB6</span><span>channel info + BASIC</span>
+          <span>stack</span><span>grows down from <span class="c">$FFFF</span></span>
+        </div>
+
+        <h3>CONTENTION</h3>
+        <p>During the 192 visible scanlines the ULA fetches pixel + attribute
+           bytes from <span class="m">$4000–$7FFF</span>. If the CPU wants the
+           same bus, the ULA wins — the Z80 stalls. This is the famous
+           <span class="k">contended memory</span> region.</p>
+
+        <h3>SYSTEM VARIABLES</h3>
+        <div class="kv">
+          <span>$5C3B</span><span>FLAGS · misc flags</span>
+          <span>$5C3F</span><span>ERR_SP · error return sp</span>
+          <span>$5C53</span><span>PROG · start of BASIC</span>
+          <span>$5C59</span><span>E_LINE · edit line</span>
+          <span>$5C5B</span><span>CURCHL · current channel</span>
+          <span>$5C78</span><span>FRAMES · 50 Hz tick</span>
+          <span>$5C8B</span><span>ATTR_P · permanent attr</span>
+          <span>$5C8F</span><span>BORDCR · border colour</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="center">
+      <div class="panel-head">
+        <span class="tag">02</span>
+        <span>ADDRESS SPACE · 64 KB</span>
+        <span class="ghost" id="phaseLabel">— BASIC READY —</span>
+      </div>
+      <div class="ribbon">
+        <div class="ribbon-inner">
+          <div class="ticks" id="ticks"></div>
+          <div class="zones" id="zones">
+            <div class="contend" id="contend"></div>
+            <div class="pc" id="pcMarker" style="top:0"></div>
+            <div class="sp" id="spMarker" style="bottom:0"></div>
+            <div class="read-flash" id="readFlash" style="top:0"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="right">
+      <div class="panel-head">
+        <span class="tag">03</span>
+        <span>LIVE · ACCESS</span>
+        <span class="ghost">BUS</span>
+      </div>
+      <div class="cards">
+        <div class="card amb"><div class="lbl">last addr</div><div class="val" id="lastAddr">0000</div></div>
+        <div class="card"><div class="lbl">last byte</div><div class="val" id="lastByte">00</div></div>
+        <div class="card cya"><div class="lbl">region</div><div class="val" id="region">ROM</div></div>
+        <div class="card"><div class="lbl">cpu reads</div><div class="val" id="cpuReads">0</div></div>
+        <div class="card"><div class="lbl">ula reads</div><div class="val" id="ulaReads">0</div></div>
+        <div class="card amb"><div class="lbl">contentions</div><div class="val" id="contentions">0</div></div>
+      </div>
+
+      <div class="hex">
+        <div class="hdr"><span>BYTES NEAR PC</span><b id="hexBase">@ 1000</b></div>
+        <div class="rows" id="hexRows"></div>
+      </div>
+
+      <div class="legend-box">
+        <div class="hdr">Legend</div>
+        <div class="legend-grid">
+          <div class="chip"><div class="sw" style="background:rgba(0,34,199,.4)"></div><span>ROM</span></div>
+          <div class="chip"><div class="sw" style="background:rgba(214,40,22,.5)"></div><span>Screen</span></div>
+          <div class="chip"><div class="sw" style="background:rgba(212,51,199,.5)"></div><span>Attrs</span></div>
+          <div class="chip"><div class="sw" style="background:rgba(0,199,201,.4)"></div><span>Printer</span></div>
+          <div class="chip"><div class="sw" style="background:rgba(204,200,42,.4)"></div><span>Sys vars</span></div>
+          <div class="chip"><div class="sw" style="background:rgba(0,197,37,.4)"></div><span>BASIC</span></div>
+          <div class="chip"><div class="sw" style="background:rgba(60,180,120,.2)"></div><span>Free</span></div>
+          <div class="chip"><div class="sw" style="background:rgba(106,210,255,.5)"></div><span>Stack</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>SYSTEM</span><b id="footSys">— memory map —</b>
+    <span class="spacer" style="flex:1"></span>
+    <span>CONTEND.</span><b id="footCnt">NO</b>
+  </footer>
+</div>
+
+<script>
+const $ = (s, r=document) => r.querySelector(s);
+const hex = (n, w) => (n>>>0).toString(16).toUpperCase().padStart(w,'0');
+
+/* ─── Spectrum 48K memory map ─── */
+const ZONES = [
+  { start:0x0000, end:0x3FFF, name:'ROM · SINCLAIR BASIC',    cls:'z-rom'    },
+  { start:0x4000, end:0x57FF, name:'DISPLAY FILE (6144 B)',   cls:'z-screen' },
+  { start:0x5800, end:0x5AFF, name:'ATTRIBUTE FILE (768 B)',  cls:'z-attr'   },
+  { start:0x5B00, end:0x5BFF, name:'PRINTER BUFFER (256 B)',  cls:'z-print'  },
+  { start:0x5C00, end:0x5CB5, name:'SYSTEM VARIABLES',        cls:'z-sysvar' },
+  { start:0x5CB6, end:0x5CCA, name:'CHANNEL INFO',            cls:'z-sysvar' },
+  { start:0x5CCB, end:0xFEFF, name:'BASIC AREA / USER RAM',   cls:'z-basic'  },
+  { start:0xFF00, end:0xFFFF, name:'STACK AREA',              cls:'z-stack'  },
+];
+
+/* ─── fake CPU trace — simulates a boot/BASIC program running ─── */
+const state = {
+  pc: 0x0000,
+  sp: 0xFFFC,
+  cycles: 0,
+  cpuReads: 0,
+  ulaReads: 0,
+  contentions: 0,
+  lastAddr: 0x0000,
+  lastByte: 0x00,
+  mem: new Uint8Array(0x10000),
+  intoRam: false,
+};
+// seed some fake data in interesting zones
+(function seed(){
+  for (let a=0; a<0x4000; a++) state.mem[a] = (a * 31 + 7) & 0xFF;      // ROM pseudo
+  for (let a=0x4000; a<0x5B00; a++) state.mem[a] = (a ^ (a>>8)) & 0xFF; // screen
+  for (let a=0x5B00; a<0x6000; a++) state.mem[a] = a & 0xFF;             // sysvars
+})();
+
+/* Scripted trace: a tiny loop pattern that walks ROM boot → screen clear →
+   sysvar poke → BASIC → stack call. Produces varied visual activity. */
+const TRACE = [
+  { addr:0x0000, kind:'CPU', dur:40,  phase:'POR · ROM BOOT' },
+  { addr:0x11DA, kind:'CPU', dur:30,  phase:'RAM CHECK'      },
+  { addr:0x15AF, kind:'ULA', dur:200, phase:'SCREEN FILL'    },
+  { addr:0x5800, kind:'ULA', dur:60,  phase:'ATTR FILL'      },
+  { addr:0x5C3B, kind:'CPU', dur:30,  phase:'INIT FLAGS'     },
+  { addr:0x5C78, kind:'CPU', dur:20,  phase:'FRAMES TICK'    },
+  { addr:0x5CCB, kind:'CPU', dur:80,  phase:'BASIC EDITOR'   },
+  { addr:0x8000, kind:'CPU', dur:60,  phase:'USER PROGRAM'   },
+  { addr:0xFFFA, kind:'CPU', dur:30,  phase:'STACK PUSH'     },
+  { addr:0x15AF, kind:'ULA', dur:200, phase:'RASTER'         },
+  { addr:0x5800, kind:'ULA', dur:60,  phase:'ATTR READ'      },
+];
+
+/* ─── build the ribbon zones ─── */
+const zonesEl = $('#zones');
+const ticksEl = $('#ticks');
+
+function layoutZones(){
+  const rect = zonesEl.getBoundingClientRect();
+  const h = rect.height || 1;
+  // clear existing zone divs (keep pc/sp/flash/contend)
+  [...zonesEl.querySelectorAll('.zone')].forEach(n => n.remove());
+  const total = 0x10000;
+  for (const z of ZONES){
+    const top = (z.start / total) * 100;
+    const height = ((z.end - z.start + 1) / total) * 100;
+    const el = document.createElement('div');
+    el.className = 'zone ' + z.cls;
+    el.style.top = top + '%';
+    el.style.height = height + '%';
+    el.innerHTML =
+      `<span class="adr">$${hex(z.start,4)}</span>` +
+      `<span class="lbl">${z.name}</span>` +
+      `<span class="size">${((z.end - z.start + 1) / 1024).toFixed(1)} K</span>`;
+    el.title = `$${hex(z.start,4)} – $${hex(z.end,4)}`;
+    zonesEl.appendChild(el);
+  }
+  // ticks
+  ticksEl.innerHTML = '';
+  for (let i=0; i<=8; i++){
+    const a = (i * 0x2000);
+    const t = (a / total) * 100;
+    const d = document.createElement('div');
+    d.className = 'tick';
+    d.style.top = t + '%';
+    d.textContent = '$' + hex(a, 4);
+    ticksEl.appendChild(d);
+  }
+}
+layoutZones();
+addEventListener('resize', layoutZones);
+
+/* ─── update ─── */
+const pcMarker = $('#pcMarker');
+const spMarker = $('#spMarker');
+const readFlash = $('#readFlash');
+const contendEl = $('#contend');
+
+function regionOf(a){
+  for (const z of ZONES) if (a >= z.start && a <= z.end){
+    return z.name.split(' ')[0].split('·')[0].trim() || z.name;
+  }
+  return '??';
+}
+
+function markRead(addr, kind){
+  // position the flash band
+  const pct = (addr / 0x10000) * 100;
+  readFlash.style.top = pct + '%';
+  readFlash.classList.remove('on'); void readFlash.offsetWidth; readFlash.classList.add('on');
+  // contention band highlights when ULA touches $4000-$7FFF
+  if (kind === 'ULA' && addr >= 0x4000 && addr <= 0x7FFF){
+    contendEl.classList.add('on');
+    setTimeout(() => contendEl.classList.remove('on'), 160);
+    state.contentions++;
+    $('#contentions').textContent = state.contentions;
+    $('#footCnt').textContent = 'YES';
+    setTimeout(() => $('#footCnt').textContent = 'NO', 160);
+  }
+}
+
+function readByte(addr){
+  const byte = state.mem[addr & 0xFFFF];
+  state.lastAddr = addr & 0xFFFF;
+  state.lastByte = byte;
+  return byte;
+}
+
+function updateUI(){
+  pcMarker.style.top = ((state.pc / 0x10000) * 100).toFixed(3) + '%';
+  spMarker.style.top = ((state.sp / 0x10000) * 100).toFixed(3) + '%';
+  $('#pcLabel').textContent = hex(state.pc, 4);
+  $('#spLabel').textContent = hex(state.sp, 4);
+  $('#cycLabel').textContent = state.cycles;
+  $('#lastAddr').textContent = hex(state.lastAddr, 4);
+  $('#lastByte').textContent = hex(state.lastByte, 2);
+  $('#region').textContent = regionOf(state.pc);
+  $('#cpuReads').textContent = state.cpuReads;
+  $('#ulaReads').textContent = state.ulaReads;
+  // hex panel
+  const base = state.pc & ~0x07;
+  $('#hexBase').textContent = '@ ' + hex(base, 4);
+  const rows = $('#hexRows');
+  let out = '';
+  for (let r=0; r<6; r++){
+    const rowAddr = (base + r*8) & 0xFFFF;
+    let cells = `<div class="adr">${hex(rowAddr,4)}</div>`;
+    let ascii = '';
+    for (let c=0; c<8; c++){
+      const a = (rowAddr + c) & 0xFFFF;
+      const byte = state.mem[a];
+      const isPC = (a === state.pc);
+      cells += `<div class="b ${isPC?'hit':''}">${hex(byte,2)}</div>`;
+      ascii += (byte >= 0x20 && byte < 0x7F) ? String.fromCharCode(byte) : '.';
+    }
+    out += `<div class="row">${cells}<div class="ascii">${ascii}</div></div>`;
+  }
+  rows.innerHTML = out;
+}
+
+/* ─── trace runner ─── */
+let traceIdx = 0, stepIdx = 0;
+function tick(){
+  const seg = TRACE[traceIdx];
+  state.pc = (seg.addr + (stepIdx % 32)) & 0xFFFF;
+  if (seg.kind === 'CPU'){
+    state.cpuReads++;
+    readByte(state.pc);
+  } else {
+    state.ulaReads++;
+    // ULA reads walk through screen file sequentially
+    const ulaAddr = (seg.addr + stepIdx * 2) & 0xFFFF;
+    state.lastAddr = ulaAddr;
+    state.lastByte = state.mem[ulaAddr];
+    markRead(ulaAddr, 'ULA');
+  }
+  if (seg.kind === 'CPU') markRead(state.pc, 'CPU');
+  $('#phaseLabel').textContent = '— ' + seg.phase + ' —';
+  state.cycles += 4 + ((Math.random()*8)|0);
+  stepIdx++;
+  if (stepIdx >= seg.dur){
+    stepIdx = 0;
+    traceIdx = (traceIdx + 1) % TRACE.length;
+    // small SP movement
+    if (seg.phase === 'STACK PUSH'){ state.sp = (state.sp - 2) & 0xFFFF; }
+    else if (traceIdx === 0){ state.sp = 0xFFFC; }
+  }
+  updateUI();
+}
+
+setInterval(tick, 50);
+
+/* click a zone to jump the beam there */
+zonesEl.addEventListener('click', e => {
+  const zone = e.target.closest('.zone');
+  if (!zone) return;
+  // extract $addr from the first span
+  const txt = zone.querySelector('.adr').textContent;
+  const a = parseInt(txt.slice(1), 16);
+  state.pc = a;
+  updateUI();
+});
+</script>
+</body>
+</html>
