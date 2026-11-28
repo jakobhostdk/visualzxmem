@@ -310,44 +310,33 @@ const hex = (n, w) => (n>>>0).toString(16).toUpperCase().padStart(w,'0');
 /* ─── BUS: WebSocket to visualbus.traeck.it ─── */
 const BUS = makeBus('mem', 'memory · 64 KB map');
 function makeBus(ID, roleDesc){
-  const _bus_room = (() => { try { const u = new URL(location.href); let r = u.searchParams.get('room'); if (!r){ r = sessionStorage.getItem('vbus.room') || (self.crypto && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)); sessionStorage.setItem('vbus.room', r); } return r; } catch(_){ return 'solo'; } })();
-  const WS_URL = 'wss://visualbus.traeck.it/?room=' + encodeURIComponent(_bus_room);
+  // In-browser bus: each client posts frames up to the deck parent
+  // (or whatever embedder is listening) via window.parent.postMessage.
+  // The deck re-broadcasts to the other iframes. No network, no serialization.
   const listeners = new Map();
-  let ws = null, backoff = 500, queue = [];
-  function connect(){
-    try { ws = new WebSocket(WS_URL); ws.binaryType = 'arraybuffer'; } catch (_){ schedule(); return; }
-    ws.addEventListener('open', () => {
-      backoff = 500;
-      send('hello', { role: roleDesc });
-      for (const m of queue){ try { ws.send(m); } catch(_){} }
-      queue.length = 0;
-    });
-    ws.addEventListener('message', e => {
-      let m = null;
-      try { m = JSON.parse(typeof e.data === 'string' ? e.data : (e.data instanceof ArrayBuffer ? new TextDecoder().decode(e.data) : '')); } catch(_){ return; }
-      if (!m || typeof m !== 'object' || !m.t || m.from === ID) return;
-      const cbs = listeners.get(m.t);
-      if (cbs) for (const cb of cbs) { try { cb(m.data, m); } catch (err) { console.error('bus handler', m.t, err); } }
-    });
-    ws.addEventListener('close', schedule);
-    ws.addEventListener('error', () => { try { ws.close(); } catch(_){} });
-  }
-  function schedule(){
-    ws = null;
-    setTimeout(connect, backoff);
-    backoff = Math.min(backoff * 2, 15000);
+  function target(){
+    try { if (window.parent && window.parent !== window) return window.parent; } catch(_){}
+    try { if (window.opener) return window.opener; } catch(_){}
+    return null;
   }
   function send(t, data){
-    const m = JSON.stringify({ t, data, from:ID });
-    if (ws && ws.readyState === 1){ try { ws.send(m); } catch(_){ queue.push(m); } }
-    else queue.push(m);
+    const dst = target();
+    if (!dst) return;
+    try { dst.postMessage({ __vbus: 1, t, data, from: ID }, '*'); } catch(_){}
   }
+  window.addEventListener('message', e => {
+    const m = e && e.data;
+    if (!m || m.__vbus !== 1 || !m.t || m.from === ID) return;
+    const cbs = listeners.get(m.t);
+    if (cbs) for (const cb of cbs) { try { cb(m.data, m); } catch (err) { console.error('bus', m.t, err); } }
+  });
   function on(t, cb){
     let a = listeners.get(t);
     if (!a){ a = []; listeners.set(t, a); }
     a.push(cb);
   }
-  connect();
+  // Announce presence to the deck.
+  send('hello', { role: roleDesc });
   return { send, on };
 }
 
